@@ -130,12 +130,16 @@ import UIKit
         // transaction.id, transaction.originalID, transaction.productID, etc.
         // iOS hat kein "orderId" wie Google, daher nimm `transactionId` oder `originalId`.
         var purchaseToken = ""
+        var receiptString = ""
         if let appStoreReceiptURL = Bundle.main.appStoreReceiptURL,
           FileManager.default.fileExists(atPath: appStoreReceiptURL.path)
         {
           do {
             let receiptData = try Data(contentsOf: appStoreReceiptURL, options: .alwaysMapped)
             purchaseToken = receiptData.base64EncodedString()
+            receiptString = receiptData.base64EncodedString(options: [
+              Data.Base64EncodingOptions.endLineWithCarriageReturn
+            ])
           } catch {
             // Receipt nicht lesbar
           }
@@ -161,7 +165,8 @@ import UIKit
           "productId": transaction.productID,
           "purchaseDate": purchaseDateStr,
           "purchaseToken": purchaseToken,
-          "expiryDate": expiryDateStr
+          "expiryDate": expiryDateStr,
+          "receipt": receiptString
         ]
 
       case .userCancelled:
@@ -276,7 +281,7 @@ import UIKit
             "No transaction for given productIdentifier, or it could not be verified",
         ]
       }
-
+       
       print("expiration" + String(decoding: formatDate(transaction.expirationDate)!, as: UTF8.self))
       print("transaction.expirationDate", transaction.expirationDate!)
       print("transaction.originalID", transaction.originalID)
@@ -310,6 +315,7 @@ import UIKit
           "transactionId": transaction.id,
           "expiryDate": transaction.expirationDate!,
           "purchaseToken": receiptString,
+          "receipt": receiptString
         ],
       ]
 
