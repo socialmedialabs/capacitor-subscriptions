@@ -104,7 +104,7 @@ public class SubscriptionsPlugin extends Plugin {
         } else {
             call.reject("Missing required parameters");
         }
-    }}
+    }
 
     @PluginMethod
     public void echo(PluginCall call) {
