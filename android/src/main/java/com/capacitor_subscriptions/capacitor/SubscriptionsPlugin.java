@@ -97,14 +97,14 @@ public class SubscriptionsPlugin extends Plugin {
         String jwt = call.getString("jwt");
         String productId = call.getString("productId");
 
-        Log.i("SET-VERIFY", "Verification values updated");
-
         if (apiEndpoint != null && jwt != null && productId != null) {
             implementation.setApiVerificationDetails(apiEndpoint, jwt, productId);
+            Log.i("SET-VERIFY", "Verification values updated");
+            call.resolve();
         } else {
             call.reject("Missing required parameters");
         }
-    }
+    }}
 
     @PluginMethod
     public void echo(PluginCall call) {
