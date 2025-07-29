@@ -11,7 +11,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.7.2'
+        classpath 'com.android.tools.build:gradle:8.11.1'
     }
 }
 
@@ -49,7 +49,7 @@ repositories {
 
 
 dependencies {
-    def billing_version = "7.1.1"
+    def billing_version = "8.0.0"
     def play_services_ads_identifier_version = "18.2.0"
     def play_services_ads_version = "22.1.0"
     def core_ktx_version = "1.16.0"
