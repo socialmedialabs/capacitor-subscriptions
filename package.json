@@ -1,7 +1,7 @@
 {
   "name": "capacitor-subscriptions",
-  "version": "1.0.14",
-  "description": "A capacitor plugin for in app purchases - implementing StoreKit 2 and Google Billing 7",
+  "version": "1.0.15",
+  "description": "A capacitor plugin for in app purchases - implementing StoreKit 2 and Google Billing 8",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
