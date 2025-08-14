@@ -10,9 +10,6 @@ buildscript {
         google()
         mavenCentral()
     }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.11.1'
-    }
 }
 
 apply plugin: 'com.android.library'
