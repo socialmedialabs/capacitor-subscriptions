@@ -1,0 +1,8 @@
+{
+  "plugins": {
+    "Subscriptions": {
+      "className": "com.capacitor_subscriptions.capacitor.SubscriptionsPlugin"
+    }
+  }
+}
+
