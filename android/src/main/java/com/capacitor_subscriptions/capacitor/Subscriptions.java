@@ -12,6 +12,7 @@ import com.android.billingclient.api.BillingFlowParams;
 import com.android.billingclient.api.BillingResult;
 import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
+import com.android.billingclient.api.QueryProductDetailsResult;
 import com.android.billingclient.api.QueryProductDetailsParams;
 import com.android.billingclient.api.QueryPurchasesParams;
 
@@ -25,12 +26,14 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -93,11 +96,15 @@ public class Subscriptions {
                 .build();
 
             QueryProductDetailsParams queryProductDetailsParams = QueryProductDetailsParams.newBuilder()
-                .setProductList(List.of(productToFind))
+                .setProductList(Collections.singletonList(productToFind))
                 .build();
 
-            billingClient.queryProductDetailsAsync(queryProductDetailsParams, (billingResult, productDetailsList) -> {
+            billingClient.queryProductDetailsAsync(queryProductDetailsParams, (BillingResult billingResult, QueryProductDetailsResult productDetailsResult) -> {
                 try {
+                    List<ProductDetails> productDetailsList = productDetailsResult.getProductDetailsList();
+                    if (productDetailsList == null || productDetailsList.isEmpty()) {
+                        throw new IllegalStateException("No ProductDetails returned");
+                    }
                     ProductDetails productDetails = productDetailsList.get(0);
                     String productId = productDetails.getProductId();
                     String title = productDetails.getTitle();
@@ -108,12 +115,13 @@ public class Subscriptions {
 
                     List<ProductDetails.SubscriptionOfferDetails> subscriptionOfferDetails = productDetails.getSubscriptionOfferDetails();
 
-                    String price = Objects.requireNonNull(subscriptionOfferDetails)
-                        .get(0)
-                        .getPricingPhases()
-                        .getPricingPhaseList()
-                        .get(0)
-                        .getFormattedPrice();
+                    String price = null;
+                    if (subscriptionOfferDetails != null && !subscriptionOfferDetails.isEmpty()) {
+                        ProductDetails.SubscriptionOfferDetails firstOffer = subscriptionOfferDetails.get(0);
+                        if (firstOffer.getPricingPhases() != null && firstOffer.getPricingPhases().getPricingPhaseList() != null && !firstOffer.getPricingPhases().getPricingPhaseList().isEmpty()) {
+                            price = firstOffer.getPricingPhases().getPricingPhaseList().get(0).getFormattedPrice();
+                        }
+                    }
 
                     JSObject data = new JSObject();
                     data.put("productIdentifier", productId);
@@ -133,14 +141,11 @@ public class Subscriptions {
                 call.resolve(response);
             });
         } else if (billingClientIsConnected == 2) {
-            response.put("responseCode", 500);
+            response.put("responseCode", 2);
             response.put("responseMessage", "Android: BillingClient failed to initialise");
             call.resolve(response);
         } else {
             response.put("responseCode", billingClientIsConnected);
-            response.put("responseMessage", "Android: BillingClient failed to initialise");
-
-            response.put("responseCode", 503);
             response.put("responseMessage", "Android: BillingClient is still initialising");
             call.resolve(response);
         }
@@ -238,9 +243,8 @@ public class Subscriptions {
                     Log.e("Error", e.toString());
                     response.put("responseCode", 2);
                     response.put("responseMessage", e.toString());
+                    call.resolve(response);
                 }
-
-                call.resolve(response);
             });
         }
     }
@@ -255,23 +259,28 @@ public class Subscriptions {
                 .build();
 
             QueryProductDetailsParams queryProductDetailsParams = QueryProductDetailsParams.newBuilder()
-                .setProductList(List.of(productToFind))
+                .setProductList(Collections.singletonList(productToFind))
                 .build();
 
-            billingClient.queryProductDetailsAsync(queryProductDetailsParams, (billingResult1, productDetailsList) -> {
+            billingClient.queryProductDetailsAsync(queryProductDetailsParams, (BillingResult billingResult1, QueryProductDetailsResult productDetailsResult) -> {
                 try {
+                    List<ProductDetails> productDetailsList = productDetailsResult.getProductDetailsList();
+                    if (productDetailsList == null || productDetailsList.isEmpty()) {
+                        throw new IllegalStateException("No ProductDetails returned");
+                    }
                     ProductDetails productDetails = productDetailsList.get(0);
+                    List<ProductDetails.SubscriptionOfferDetails> offerDetails = productDetails.getSubscriptionOfferDetails();
+                    if (offerDetails == null || offerDetails.isEmpty()) {
+                        throw new IllegalStateException("No offers available for this subscription");
+                    }
+
+                    BillingFlowParams.ProductDetailsParams productDetailsParams = BillingFlowParams.ProductDetailsParams.newBuilder()
+                        .setProductDetails(productDetails)
+                        .setOfferToken(offerDetails.get(0).getOfferToken())
+                        .build();
+
                     BillingFlowParams.Builder builder = BillingFlowParams.newBuilder()
-                        .setProductDetailsParamsList(
-                            List.of(
-                                BillingFlowParams.ProductDetailsParams.newBuilder()
-                                    .setProductDetails(productDetails)
-                                    .setOfferToken(
-                                        Objects.requireNonNull(productDetails.getSubscriptionOfferDetails()).get(0).getOfferToken()
-                                    )
-                                    .build()
-                            )
-                        );
+                        .setProductDetailsParamsList(Collections.singletonList(productDetailsParams));
                     if (accountId != null) {
                         builder.setObfuscatedAccountId(accountId);
                     }
@@ -295,7 +304,8 @@ public class Subscriptions {
     private String getExpiryDateFromApi(String transactionId) {
         try {
             // Compile request to verify purchase token
-            URL obj = new URL(this.apiEndpoint);
+            URI uri = URI.create(this.apiEndpoint);
+            URL obj = uri.toURL();
             HttpURLConnection con = (HttpURLConnection) obj.openConnection();
             con.setRequestMethod("POST");
             con.setRequestProperty("Content-Type", "application/json; charset=UTF-8");

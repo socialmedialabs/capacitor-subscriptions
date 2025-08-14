@@ -7,6 +7,7 @@ import android.util.Log;
 import com.android.billingclient.api.AcknowledgePurchaseParams;
 import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingResult;
+import com.android.billingclient.api.PendingPurchasesParams; // <-- Import this
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.Purchase.PurchaseState;
 import com.android.billingclient.api.PurchasesUpdatedListener;
@@ -41,14 +42,14 @@ public class SubscriptionsPlugin extends Plugin {
         if (purchases != null && !purchases.isEmpty()) {
             for (Purchase currentPurchase : purchases) {
                 if (
-                    this.acknowledgePurchases &&
-                    !currentPurchase.isAcknowledged() &&
-                    billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK &&
-                    currentPurchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED
+                        this.acknowledgePurchases &&
+                                !currentPurchase.isAcknowledged() &&
+                                billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK &&
+                                currentPurchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED
                 ) {
                     AcknowledgePurchaseParams acknowledgePurchaseParams = AcknowledgePurchaseParams.newBuilder()
-                        .setPurchaseToken(currentPurchase.getPurchaseToken())
-                        .build();
+                            .setPurchaseToken(currentPurchase.getPurchaseToken())
+                            .build();
 
                     billingClient.acknowledgePurchase(acknowledgePurchaseParams, billingResult1 -> {
                         Log.i("Purchase ack", currentPurchase.getOriginalJson());
@@ -64,9 +65,9 @@ public class SubscriptionsPlugin extends Plugin {
                         notifyListeners("ANDROID-PURCHASE-RESPONSE", response);
                     });
                 } else if (
-                    !this.acknowledgePurchases &&
-                    billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK &&
-                    currentPurchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED
+                        !this.acknowledgePurchases &&
+                                billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK &&
+                                currentPurchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED
                 ) {
                     response.put("successful", true);
                     try {
@@ -87,7 +88,14 @@ public class SubscriptionsPlugin extends Plugin {
 
     @Override
     public void load() {
-        this.billingClient = BillingClient.newBuilder(getContext()).setListener(purchasesUpdatedListener).enablePendingPurchases().build();
+        // Create PendingPurchasesParams
+        PendingPurchasesParams pendingPurchasesParams = PendingPurchasesParams.newBuilder()
+                .build();
+
+        this.billingClient = BillingClient.newBuilder(getContext())
+                .setListener(purchasesUpdatedListener)
+                .enablePendingPurchases(pendingPurchasesParams) // <-- Pass the params here
+                .build();
         implementation = new Subscriptions(this, billingClient);
     }
 
@@ -132,8 +140,8 @@ public class SubscriptionsPlugin extends Plugin {
         String accountId = call.getString("accountId");
 
         this.acknowledgePurchases = call.getBoolean("acknowledgePurchases") != null
-            ? call.getBoolean("acknowledgePurchases")
-            : Boolean.TRUE;
+                ? call.getBoolean("acknowledgePurchases")
+                : Boolean.TRUE;
 
         if (productIdentifier == null) {
             call.reject("Must provide a productID");
@@ -161,20 +169,22 @@ public class SubscriptionsPlugin extends Plugin {
     @PluginMethod
     public void manageSubscriptions(PluginCall call) {
         String productIdentifier = call.getString("productIdentifier");
-        String jwt = call.getString("jwt");
+        String packageName = call.getString("packageName") != null ? call.getString("packageName") : call.getString("jwt");
 
         if (productIdentifier == null) {
             call.reject("Must provide a productID");
         }
 
-        if (jwt == null) {
-            call.reject("Must provide a bundleID");
+        if (packageName == null) {
+            call.reject("Must provide a packageName");
         }
 
-        Intent browserIntent = new Intent(
-            Intent.ACTION_VIEW,
-            Uri.parse("https://play.google.com/store/account/subscriptions?sku=" + productIdentifier + "&package=" + jwt)
-        );
+        Uri uri = Uri.parse("https://play.google.com/store/account/subscriptions")
+                .buildUpon()
+                .appendQueryParameter("sku", productIdentifier)
+                .appendQueryParameter("package", packageName)
+                .build();
+        Intent browserIntent = new Intent(Intent.ACTION_VIEW, uri);
         getActivity().startActivity(browserIntent);
     }
 }

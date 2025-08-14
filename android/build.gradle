@@ -33,12 +33,12 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-    lintOptions {
+    lint {
         abortOnError false
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_21
-        targetCompatibility JavaVersion.VERSION_21
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 }
 
@@ -50,18 +50,12 @@ repositories {
 
 dependencies {
     def billing_version = "8.0.0"
-    def play_services_ads_identifier_version = "18.2.0"
-    def play_services_ads_version = "22.1.0"
-    def core_ktx_version = "1.16.0"
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation project(':capacitor-android')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "com.android.billingclient:billing:$billing_version"
-    implementation "com.google.android.gms:play-services-ads-identifier:$play_services_ads_identifier_version"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
-    implementation "androidx.core:core-ktx:$core_ktx_version"
-    implementation "com.google.android.gms:play-services-ads:$play_services_ads_version"
 }
 
