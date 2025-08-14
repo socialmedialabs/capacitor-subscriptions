@@ -1,8 +1,9 @@
 {
-  "plugins": {
-    "Subscriptions": {
+  "plugins": [
+    {
+      "name": "Subscriptions",
       "className": "com.capacitor_subscriptions.capacitor.SubscriptionsPlugin"
     }
-  }
+  ]
 }
 
