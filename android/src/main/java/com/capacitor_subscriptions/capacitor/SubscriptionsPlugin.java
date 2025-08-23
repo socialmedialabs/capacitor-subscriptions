@@ -12,6 +12,7 @@ import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.Purchase.PurchaseState;
 import com.android.billingclient.api.PurchasesUpdatedListener;
 import com.android.billingclient.api.QueryPurchasesParams;
+import com.android.billingclient.api.PendingPurchasesParams;
 // Capacitor imports
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -76,6 +77,18 @@ public class SubscriptionsPlugin extends Plugin {
                         response.put("purchase", currentPurchase.getPurchaseToken());
                     }
                     notifyListeners("ANDROID-PURCHASE-RESPONSE", response);
+                } else if (
+                    billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK &&
+                    currentPurchase.getPurchaseState() == Purchase.PurchaseState.PENDING
+                ) {
+                    response.put("successful", false);
+                    response.put("pending", true);
+                    try {
+                        response.put("purchase", new JSObject(currentPurchase.getOriginalJson()));
+                    } catch (Exception e) {
+                        response.put("purchase", currentPurchase.getPurchaseToken());
+                    }
+                    notifyListeners("ANDROID-PURCHASE-RESPONSE", response);
                 }
             }
         } else {
@@ -88,15 +101,40 @@ public class SubscriptionsPlugin extends Plugin {
 
     @Override
     public void load() {
-        // Create PendingPurchasesParams
-        PendingPurchasesParams pendingPurchasesParams = PendingPurchasesParams.newBuilder()
+        Log.i("SubscriptionsPlugin", "load() called - initializing BillingClient");
+        try {
+            try {
+                Class.forName("com.android.billingclient.api.BillingClient");
+                Log.i("SubscriptionsPlugin", "BillingClient class found");
+            } catch (Throwable t) {
+                Log.e("SubscriptionsPlugin", "BillingClient class NOT found", t);
+            }
+
+            try {
+                Class.forName("com.android.billingclient.api.PendingPurchasesParams");
+                Log.i("SubscriptionsPlugin", "PendingPurchasesParams class found");
+            } catch (Throwable t) {
+                Log.e("SubscriptionsPlugin", "PendingPurchasesParams class NOT found", t);
+            }
+
+            PendingPurchasesParams pendingParams = PendingPurchasesParams
+                .newBuilder()
+                .enableOneTimeProducts()
                 .build();
 
-        this.billingClient = BillingClient.newBuilder(getContext())
+            this.billingClient = BillingClient
+                .newBuilder(getContext())
                 .setListener(purchasesUpdatedListener)
-                .enablePendingPurchases(pendingPurchasesParams) // <-- Pass the params here
+                .enablePendingPurchases(pendingParams)
+                .enableAutoServiceReconnection()
                 .build();
-        implementation = new Subscriptions(this, billingClient);
+            Log.i("SubscriptionsPlugin", "BillingClient built successfully");
+            implementation = new Subscriptions(this, billingClient);
+            Log.i("SubscriptionsPlugin", "Subscriptions implementation created");
+        } catch (Throwable t) {
+            Log.e("SubscriptionsPlugin", "Error during plugin load / BillingClient init", t);
+            throw t instanceof RuntimeException ? (RuntimeException) t : new RuntimeException(t);
+        }
     }
 
     @PluginMethod
