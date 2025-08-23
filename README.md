@@ -1,7 +1,7 @@
 
 # Capacitor Subscription
 
-A capacitor plugin which simplifies subscription handling - implementing StoreKit 2 and Google Billing 7.
+A capacitor plugin which simplifies subscription handling - implementing StoreKit 2 and Google Billing 8.
 
 ## Install
 
@@ -15,7 +15,7 @@ ionic cap sync
 
 This plugin is designed to simplify and reduce the workload of a developer when implementing auto-renewing subscriptions for iOS and Android apps.
 
-The plugin primarily uses a promise-based architecture to allow a developer to have greater control over the purchase and validation processes involved when interacting with StoreKit 2 and Google Billing 5.
+The plugin primarily uses a promise-based architecture to allow a developer to have greater control over the purchase and validation processes involved when interacting with StoreKit 2 and Google Billing 8.
 
 
 
@@ -272,3 +272,17 @@ useEffect(() => {
 	});
 }, [])
 ```
+
+### Google Play Billing v8 notes
+
+- This plugin requires Google Play Billing Library v8 on Android.
+- Pending purchases must be explicitly enabled via `PendingPurchasesParams` during `BillingClient` setup. The plugin does this internally with:
+  - `PendingPurchasesParams.newBuilder().enableOneTimeProducts().build()`
+- The Billing client enables automatic service reconnection to improve reliability: `.enableAutoServiceReconnection()`.
+- The plugin emits a PENDING event state on Android:
+  - Event name: `ANDROID-PURCHASE-RESPONSE`
+  - Example payload when pending: `{ successful: false, pending: true, purchase: {...} }`
+- If you use the plugin locally via `file:../capacitor-subscriptions`, run after updates:
+  - `npm install` in your app
+  - `npx cap sync android`
+  - Rebuild the Android app

@@ -47,9 +47,9 @@ public class Subscriptions {
 
     private String apiEndpoint = "";
     private String jwt = "";
-    private String productId = "";
 
     public Subscriptions(SubscriptionsPlugin plugin, BillingClient billingClient) {
+        Logger.info("Subscriptions:init start");
         this.billingClient = billingClient;
         this.billingClient.startConnection(
                 new BillingClientStateListener() {
@@ -57,8 +57,10 @@ public class Subscriptions {
                     public void onBillingSetupFinished(@NonNull BillingResult billingResult) {
                         if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
                             billingClientIsConnected = 1;
+                            Logger.info("Subscriptions:Billing setup finished OK");
                         } else {
                             billingClientIsConnected = billingResult.getResponseCode();
+                            Logger.error("Subscriptions:Billing setup failed code=" + billingResult.getResponseCode() + " msg=" + billingResult.getDebugMessage());
                         }
                     }
 
@@ -66,11 +68,13 @@ public class Subscriptions {
                     public void onBillingServiceDisconnected() {
                         // Try to restart the connection on the next request to
                         // Google Play by calling the startConnection() method.
+                        Logger.warn("Subscriptions:Billing service disconnected");
                     }
                 }
             );
         this.activity = plugin.getActivity();
         this.context = plugin.getContext();
+        Logger.info("Subscriptions:init done");
     }
 
     public String echo(String value) {
@@ -81,7 +85,6 @@ public class Subscriptions {
     public void setApiVerificationDetails(String apiEndpoint, String jwt, String productId) {
         this.apiEndpoint = apiEndpoint;
         this.jwt = jwt;
-        this.productId = productId;
 
         Log.i("SET-VERIFY", "Verification values updated");
     }
@@ -99,12 +102,9 @@ public class Subscriptions {
                 .setProductList(Collections.singletonList(productToFind))
                 .build();
 
-            billingClient.queryProductDetailsAsync(queryProductDetailsParams, (BillingResult billingResult, QueryProductDetailsResult productDetailsResult) -> {
+            billingClient.queryProductDetailsAsync(queryProductDetailsParams, (billingResult, productDetailsResult) -> {
                 try {
                     List<ProductDetails> productDetailsList = productDetailsResult.getProductDetailsList();
-                    if (productDetailsList == null || productDetailsList.isEmpty()) {
-                        throw new IllegalStateException("No ProductDetails returned");
-                    }
                     ProductDetails productDetails = productDetailsList.get(0);
                     String productId = productDetails.getProductId();
                     String title = productDetails.getTitle();
@@ -262,12 +262,9 @@ public class Subscriptions {
                 .setProductList(Collections.singletonList(productToFind))
                 .build();
 
-            billingClient.queryProductDetailsAsync(queryProductDetailsParams, (BillingResult billingResult1, QueryProductDetailsResult productDetailsResult) -> {
+            billingClient.queryProductDetailsAsync(queryProductDetailsParams, (billingResult1, productDetailsResult) -> {
                 try {
                     List<ProductDetails> productDetailsList = productDetailsResult.getProductDetailsList();
-                    if (productDetailsList == null || productDetailsList.isEmpty()) {
-                        throw new IllegalStateException("No ProductDetails returned");
-                    }
                     ProductDetails productDetails = productDetailsList.get(0);
                     List<ProductDetails.SubscriptionOfferDetails> offerDetails = productDetails.getSubscriptionOfferDetails();
                     if (offerDetails == null || offerDetails.isEmpty()) {
@@ -304,7 +301,7 @@ public class Subscriptions {
     private String getExpiryDateFromApi(String transactionId) {
         try {
             // Compile request to verify purchase token
-            URI uri = URI.create(this.apiEndpoint);
+            URI uri = new URI(this.apiEndpoint);
             URL obj = uri.toURL();
             HttpURLConnection con = (HttpURLConnection) obj.openConnection();
             con.setRequestMethod("POST");
