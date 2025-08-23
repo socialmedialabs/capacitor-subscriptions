@@ -1,10 +1,19 @@
 {
   "name": "capacitor-subscriptions",
-  "version": "1.0.14",
+  "version": "1.0.17",
   "description": "A capacitor plugin for in app purchases - implementing StoreKit 2 and Google Billing 7",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/plugin.cjs.js",
+      "default": "./dist/esm/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "unpkg": "dist/plugin.js",
   "files": [
     "android/src/main/",
@@ -16,12 +25,12 @@
   "author": "Bernhard Pfeifer",
   "license": "MIT",
   "repository": {
-    "type": "git",
-    "url": "git+https://github.com/socialmedialabs/capacitor-subscriptions.git.git"
-  },
-  "bugs": {
-    "url": "https://github.com/socialmedialabs/capacitor-subscriptions.git/issues"
-  },
+  "type": "git",
+  "url": "git+https://github.com/socialmedialabs/capacitor-subscriptions.git"
+},
+"bugs": {
+  "url": "https://github.com/socialmedialabs/capacitor-subscriptions/issues"
+},
   "keywords": [
     "capacitor",
     "plugin",
