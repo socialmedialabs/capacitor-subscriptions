@@ -7,7 +7,6 @@ import android.util.Log;
 import com.android.billingclient.api.AcknowledgePurchaseParams;
 import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingResult;
-import com.android.billingclient.api.PendingPurchasesParams; // <-- Import this
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.Purchase.PurchaseState;
 import com.android.billingclient.api.PurchasesUpdatedListener;
