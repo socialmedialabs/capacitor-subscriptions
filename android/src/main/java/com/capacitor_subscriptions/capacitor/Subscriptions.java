@@ -246,6 +246,10 @@ public class Subscriptions {
                     call.resolve(response);
                 }
             });
+        } else {
+            response.put("responseCode", billingClientIsConnected);
+            response.put("responseMessage", "BillingClient not connected");
+            call.resolve(response);
         }
     }
 
@@ -329,19 +333,10 @@ public class Subscriptions {
                 // If the response was successful, extract expiryDate and put it in our response data property
                 if (con.getResponseCode() == 200) {
                     JSObject postResponseJSON = new JSObject(googleResponse.toString());
-
-                    String dateFormat = "yyyy-MM-dd HH:mm:ss";
-                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat(dateFormat, Locale.getDefault());
-
-                    // Direkt den gewünschten Schlüssel auslesen
+                    // ISO 8601 UTC String direkt zurückgeben, keine lokale Reformatierung
                     String expiryString = postResponseJSON.getString("expiryDate");
-                    Date date = simpleDateFormat.parse(expiryString);
-
-                    Calendar calendar = Calendar.getInstance();
-                    calendar.setTime(date);
-
-                    Log.i("EXPIRY", simpleDateFormat.format(calendar.getTime()));
-                    return simpleDateFormat.format(calendar.getTime());
+                    Log.i("EXPIRY_ISO", expiryString);
+                    return expiryString;
                 } else {
                     return null;
                 }

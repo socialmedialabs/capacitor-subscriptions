@@ -145,15 +145,16 @@ import UIKit
           }
         }
 
-        // Kaufdatum formatieren (optional)
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let purchaseDateStr = dateFormatter.string(from: transaction.originalPurchaseDate)
+        // ISO 8601 UTC
+        let iso = ISO8601DateFormatter()
+        iso.timeZone = TimeZone(secondsFromGMT: 0)
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let purchaseDateStr = iso.string(from: transaction.originalPurchaseDate)
 
         // EXPIRATION (falls vorhanden)
         var expiryDateStr = ""
         if let expirationDate = transaction.expirationDate {
-          expiryDateStr = dateFormatter.string(from: expirationDate)
+          expiryDateStr = iso.string(from: expirationDate)
         }
 
         // Daten zurückgeben
@@ -220,13 +221,19 @@ import UIKit
         let transaction: Transaction? = checkVerified(verification) as? Transaction
         if transaction != nil {
 
+          let iso = ISO8601DateFormatter()
+          iso.timeZone = TimeZone(secondsFromGMT: 0)
+          iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+          let originalStart = iso.string(from: transaction!.originalPurchaseDate)
+          let expiry = transaction!.expirationDate != nil ? iso.string(from: transaction!.expirationDate!) : ""
+
           transactions.append(
             [
               "productIdentifier": transaction!.productID,
-              "originalStartDate": transaction!.originalPurchaseDate,
+              "originalStartDate": originalStart,
               "originalId": transaction!.originalID,
               "transactionId": transaction!.id,
-              "expiryDate": transaction!.expirationDate,
+              "expiryDate": expiry,
             ]
           )
 
@@ -281,7 +288,7 @@ import UIKit
             "No transaction for given productIdentifier, or it could not be verified",
         ]
       }
-       
+
       print("expiration" + String(decoding: formatDate(transaction.expirationDate)!, as: UTF8.self))
       print("transaction.expirationDate", transaction.expirationDate!)
       print("transaction.originalID", transaction.originalID)
@@ -305,15 +312,21 @@ import UIKit
         } catch { print("Couldn't read receipt data with error: " + error.localizedDescription) }
       }
 
+      let iso = ISO8601DateFormatter()
+      iso.timeZone = TimeZone(secondsFromGMT: 0)
+      iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+      let originalStart = iso.string(from: transaction.originalPurchaseDate)
+      let expiry = transaction.expirationDate != nil ? iso.string(from: transaction.expirationDate!) : ""
+
       return [
         "responseCode": 0,
         "responseMessage": "Latest transaction found",
         "data": [
           "productIdentifier": transaction.productID,
-          "originalStartDate": transaction.originalPurchaseDate,
+          "originalStartDate": originalStart,
           "originalId": transaction.originalID,
           "transactionId": transaction.id,
-          "expiryDate": transaction.expirationDate!,
+          "expiryDate": expiry,
           "purchaseToken": receiptString,
           "receipt": receiptString
         ],
