@@ -6,7 +6,7 @@ A capacitor plugin which simplifies subscription handling - implementing StoreKi
 ## Install
 
 ```bash
-npm install capacitor-subscriptions
+npm install @socialmedialabs/capacitor-subscriptions
 ionic cap sync
 ```
 

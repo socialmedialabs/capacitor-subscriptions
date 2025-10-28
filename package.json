@@ -1,7 +1,7 @@
 {
-  "name": "capacitor-subscriptions",
+  "name": "@socialmedialabs/capacitor-subscriptions",
   "version": "1.0.17",
-  "description": "A capacitor plugin for in app purchases - implementing StoreKit 2 and Google Billing 7",
+  "description": "A capacitor plugin for in app purchases - implementing StoreKit 2 and Google Billing 8",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
@@ -22,15 +22,19 @@
     "ios/Plugin/",
     "CapacitorSubscriptions.podspec"
   ],
-  "author": "Bernhard Pfeifer",
+  "author": "Social Media Labs",
   "license": "MIT",
   "repository": {
   "type": "git",
-  "url": "git+https://github.com/socialmedialabs/capacitor-subscriptions.git"
+  "url": "https://github.com/socialmedialabs/capacitor-subscriptions.git"
 },
 "bugs": {
   "url": "https://github.com/socialmedialabs/capacitor-subscriptions/issues"
 },
+  "homepage": "https://github.com/socialmedialabs/capacitor-subscriptions#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "capacitor",
     "plugin",
