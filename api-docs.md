@@ -1,6 +1,6 @@
 # capacitor-subscriptions
 
-A capacitor plugin which simplifies subscription handling - implementing StoreKit 2 and Google Billing 5
+A capacitor plugin which simplifies subscription handling - implementing StoreKit 2 and Google Billing 8
 
 ## Install
 
