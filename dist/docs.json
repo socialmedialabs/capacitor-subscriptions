@@ -132,20 +132,20 @@
         "slug": "managesubscriptions"
       },
       {
-        "name": "setGoogleVerificationDetails",
-        "signature": "(options: { googleVerifyEndpoint: string; productId: string; }) => void",
+        "name": "setApiVerificationDetails",
+        "signature": "(options: { apiEndpoint: string; jwt: string; productId: string; }) => Promise<void>",
         "parameters": [
           {
             "name": "options",
             "docs": "",
-            "type": "{ googleVerifyEndpoint: string; productId: string; }"
+            "type": "{ apiEndpoint: string; jwt: string; productId: string; }"
           }
         ],
-        "returns": "void",
+        "returns": "Promise<void>",
         "tags": [],
         "docs": "",
         "complexTypes": [],
-        "slug": "setgoogleverificationdetails"
+        "slug": "setapiverificationdetails"
       },
       {
         "name": "addListener",

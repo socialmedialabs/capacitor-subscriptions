@@ -28,9 +28,10 @@ export declare class SubscriptionsWeb extends WebPlugin implements Subscriptions
         productIdentifier: string;
     }): Promise<RefundLatestTransactionResponse>;
     manageSubscriptions(): void;
-    setGoogleVerificationDetails(options: {
-        googleVerifyEndpoint: string;
+    setApiVerificationDetails(options: {
+        apiEndpoint: string;
+        jwt: string;
         productId: string;
-    }): void;
+    }): Promise<void>;
     addListener(eventName: 'ANDROID-PURCHASE-RESPONSE', listenerFunc: (response: AndroidPurchasedTrigger) => void): Promise<PluginListenerHandle>;
 }

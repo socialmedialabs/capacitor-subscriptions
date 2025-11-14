@@ -30,7 +30,7 @@ refundLatestTransaction(options: { productIdentifier: string }): Promise<RefundL
 
 manageSubscriptions(): any;
 
-setGoogleVerificationDetails(options: { googleVerifyEndpoint: string, productId: string }): void;
+setApiVerificationDetails(options: { apiEndpoint: string; jwt: string; productId: string }): Promise<void>;
 
 addListener(
     eventName: 'ANDROID-PURCHASE-RESPONSE',

@@ -1,288 +1,229 @@
+# capacitor-subscriptions
 
-# Capacitor Subscription
+[![npm version](https://img.shields.io/npm/v/@socialmedialabs/capacitor-subscriptions.svg)](https://www.npmjs.com/package/@socialmedialabs/capacitor-subscriptions)
+[![npm downloads](https://img.shields.io/npm/dm/@socialmedialabs/capacitor-subscriptions.svg)](https://www.npmjs.com/package/@socialmedialabs/capacitor-subscriptions)
+[![license](https://img.shields.io/github/license/socialmedialabs/capacitor-subscriptions)](./LICENSE)
+[![platforms](https://img.shields.io/badge/platforms-iOS%2015%2B%20%7C%20Android%2023%2B-green)](#)
 
-A capacitor plugin which simplifies subscription handling - implementing StoreKit 2 and Google Billing 8.
+StoreKit 2 and Google Play Billing v8 subscription utilities for Capacitor 7.
 
-## Install
+- ✅ Capacitor 7 compatible (`@capacitor/core` peer dependency)
+- ✅ StoreKit 2 (iOS 15+) with automatic transaction finishing and `AppStore.sync` support
+- ✅ Google Play Billing Library v8 with auto-acknowledge purchases and pending purchase events
+- ✅ Promise-based helpers for product metadata, entitlements, and transaction history
+
+## Installation
 
 ```bash
 npm install @socialmedialabs/capacitor-subscriptions
-ionic cap sync
 ```
 
-## Summary
+Then sync native platforms:
 
+```bash
+npx cap sync
+```
 
-This plugin is designed to simplify and reduce the workload of a developer when implementing auto-renewing subscriptions for iOS and Android apps.
+## Quick Start
 
-The plugin primarily uses a promise-based architecture to allow a developer to have greater control over the purchase and validation processes involved when interacting with StoreKit 2 and Google Billing 8.
+### 1. Bootstrap the plugin
 
+```ts
+import { Capacitor } from '@capacitor/core';
+import { Subscriptions } from '@socialmedialabs/capacitor-subscriptions';
 
+export async function bootstrapSubscriptions(apiUrl: string, authToken: string) {
+  const platform = Capacitor.getPlatform();
 
-Examples - Subscriptions
-
-
--   [Initial Android setup (server validation)](#markdown-header-initial-android-setup-server-validation)
--   [Determining if user has an active subscription or not](#markdown-header-determining-if-user-has-an-active-subscription-or-not)
--   [Retrieve the most recent transaction in order to provide user feedback on when their subscription expires/expired](#markdown-header-retrieve-the-most-recent-transaction-regardless-of-whether-or-not-it-is-active-useful-for-providing-feedback-on-when-the-subscription-willhas-expired)
--   [Retrieving product details e.g. price](#markdown-header-retrieving-product-details-eg-price)
--   [Payment initiation and flow (iOS)](#markdown-header-payment-initiation-and-flow-ios)
--   [Payment initiation and flow (Android)](#markdown-header-payment-initiation-and-flow-android)
-
-## API Docs
-
-For a more in-depth look into the different parameters for methods, along with the corresponding types. Please look into a breakdown of the API:
-
-[API Documentation](api-docs.md)
-
-## More in-depth review of the plugin
-
-As it stands, the [current plugin listed on the capacitor website](https://ionicframework.com/docs/native/in-app-purchase-2) can be used to achieve a working solution for subscription processing, however after using that plugin myself, I found many of the listener methods to be redundant, and the server-side transaction verifying tedious, and not very well documented.
-
-
-By changing how the store data is received from listener-based methods to promise-based methods, the overall process of receiving data is a lot more stream-lined - returning only necessary data as opposed to every transaction a user has ever made.
-
-
-
-This plugin implements capabilities to allow the developer to:
-
-
-
--   No longer have to use server-side technology to verify Apple’s horribly-formatted receipt - transactions are now automatically verified on Apple’s end.
--   Retrieve all currently active subscriptions allowing you to determine whether or not the user has access to content with just a single line of code.
--   Not have to worry about handling transactions which are made outside of the purchase-flow (e.g. an auto renewed subscription) as this is taken care of on the native side of the plugin.
--   Create more responsive IAP processes by awaiting promise calls, making the processes synchronous and predictable.
-
-
-
-## Limitations
-
--   Google unfortunately still requires a server-side call to verify a transaction’s purchase token in order to find out the expiry date of a subscription (there is currently no way around this).
-
--  To help make this as painless as can be, a method is available which will perform the request upon passing in your server’s verification endpoint and app bundle details. A guide on how to set up your server to connect to your app can be found [here](#markdown-header-initial-android-setup-server-validation)
-
--   As this library uses StoreKit 2, any users on anything lower than iOS 15 will have to upgrade in order to access the app.
-
-
-# Examples
-
-## Initial Android setup (server validation)
-
-Before calling any methods on the plugin, it is essential to pass a few parameters into the "setGoogleVerificationDetails(...)" method. In an Ionic app, this would be most appropriate near the top of the App.tsx file - simply pass in the server endpoint for the google verification call and the JWT access token, along with the app id, e.g:
-
-```javascript
-useEffect(() => {
-
-    Subscriptions.setApiVerificationDetails({
+  if (platform === 'android') {
+    await Subscriptions.setApiVerificationDetails({
       apiEndpoint: `${apiUrl}/subscription/expiry`,
-      jwt: authStore.auth.jwt,
-      app: appId,
-    })
+      jwt: authToken,
+      productId: 'com.example.app.pro.monthly',
+    });
+  }
 
-	// start making calls to other plugin methods
+  const entitlements = await Subscriptions.getCurrentEntitlements({
+    sync: platform === 'ios',
+  });
 
-}, []);
+  if (entitlements.responseCode === 0 && entitlements.data?.length) {
+    // User has at least one active subscription
+  }
+}
 ```
 
-**NOTE** - It is NOT required to specifically check that the device is an Android one before executing this code. If this code is executed on an iOS device, the plugin will just ignore it.
+- `setApiVerificationDetails` lets the Android bridge call your backend so it can talk to the Google Play Developer API. The backend is expected to return JSON with an `expiryDate` ISO string for the provided `transaction_id`. The `productId` value is required by the current native implementation even though it is not yet used.
+- Pass a JWT via the `jwt` field to secure backend communication. The Android bridge injects it as a `Bearer` token in the `Authorization` header so your server can authenticate each request.
+- The `sync` flag triggers `AppStore.sync()` on iOS and is ignored on Android.
 
-## Determining if user has an active subscription or not
+## Android
 
-Calling getCurrentEntitlements() will return an array of subscription transactions which are still active - if the array length is greater than one, then the user has an active subscription.
+- Targets `compileSdkVersion`/`targetSdkVersion` 35 and `minSdkVersion` 23 (see `android/build.gradle`).
+- Google Play Billing Library v8 is bundled. Pending purchases are enabled via `PendingPurchasesParams` and automatic service reconnection.
+- Call `setApiVerificationDetails` before retrieving entitlements so expiry dates can be fetched from your backend. The JWT is forwarded as a `Bearer` token in the `Authorization` header.
+- `purchaseProduct` resolves with `{ responseCode: 0, responseMessage: 'Successfully opened native popover' }` on success. Pass `acknowledgePurchases: false` if you want to acknowledge purchases yourself.
+- `getCurrentEntitlements` returns dates formatted with the device locale/time zone (currently `dd-MM-yyyy hh:mm`). Normalise them in your app if you need ISO strings.
+- Listen for purchase updates (including pending states):
 
-```javascript
-const [hasActiveSubscription, setHasActiveSubscription] = useState(false)
+```ts
+import { Subscriptions } from '@socialmedialabs/capacitor-subscriptions';
 
-Subscription.getCurrentEntitlements().then((entitlements: any) => {
-	setHasActiveSubscription(entitlements.length > 0);
+const removeListener = await Subscriptions.addListener('ANDROID-PURCHASE-RESPONSE', payload => {
+  if (payload.pending) {
+    // The purchase is awaiting confirmation (e.g. pending family approval)
+    return;
+  }
+
+  if (payload.successful) {
+    // Refresh entitlements or trigger server-side validation
+  } else {
+    console.warn('Purchase failed', payload);
+  }
 });
 
-async getCurrentEntitlements() {
-	const response: CurrentEntitlementsResponse = await Subscriptions.getCurrentEntitlements();
-	if (response.responseCode == 0){
-		return response.data as Transaction[];
-	} else {
-		return [];
-	}
+// Later, e.g. on component unmount:
+await removeListener.remove();
+```
+
+- Open Google Play subscription management for a specific product:
+
+```ts
+import { Subscriptions } from '@socialmedialabs/capacitor-subscriptions';
+
+await Subscriptions.manageSubscriptions({
+  productIdentifier: 'com.example.app.pro.monthly',
+  packageName: 'com.example.app',
+});
+```
+
+Treat the call as fire-and-forget on Android; the current implementation opens the Play Store intent without resolving the JavaScript promise.
+
+## iOS
+
+- Requires iOS 15+ because the plugin is built on StoreKit 2.
+- The plugin finishes outstanding transactions in the background (`Transaction.updates` / `Transaction.unfinished`).
+- `purchaseProduct` resolves with a StoreKit-oriented payload:
+
+```ts
+import { Subscriptions } from '@socialmedialabs/capacitor-subscriptions';
+
+const purchase = await Subscriptions.purchaseProduct({
+  productIdentifier: 'com.example.app.pro.monthly',
+  accountId: userAppAccountUuid, // must be a UUID string if provided
+});
+
+if (purchase.successful) {
+  // purchase.receipt contains the base64 App Store receipt
+} else {
+  console.warn('Purchase not completed', purchase.message);
 }
 ```
 
-## Retrieve the most recent transaction regardless of whether or not it is active (useful for providing feedback on when the subscription will/has expired)
+- `getCurrentEntitlements({ sync: true })` first calls `AppStore.sync()` and returns an array of verified transactions (including ISO `expiryDate` values when available).
+- `getLatestTransaction` returns the latest verified transaction for a product, including the base64 receipt.
+- `manageSubscriptions()` opens the Apple subscriptions management page.
+- `refundLatestTransaction` exists in the native implementation but is not exposed through the Capacitor bridge in v1.0.17, so calling it from JavaScript currently throws `UNIMPLEMENTED`.
 
-Using getLatestTransaction(...) and passing the relevant product identifier (linked to your iOS/Android subscription products), will return the most recent transaction the user has made for that product.
+## Web Platform
 
-```javascript
-productIDs = {
-	"ios": {
-		"oneMonth": "com.your.subscriptionid.monthly",
-		"twelveMonth": "com.your.subscriptionid.yearly",
-	},
-	"android": {
-		"oneMonth":  "com.your.subscriptionid.android.1.month",
-		"twelveMonth":  "com.your.subscriptionid.android.12.months"
-	}
-}
+All native methods resolve with `{ responseCode: -1, responseMessage: 'Incompatible with web' }`. Use web-specific fallbacks if you ship a PWA.
 
-async getLatestTransaction(): Promise<Transaction | undefined> {
+## API Overview
 
-	try {
+See the generated [api-docs.md](api-docs.md) for the complete type signatures. Highlights:
 
-		const  platform = (await  Device.getInfo()).platform;
+| Method | Platforms | Notes |
+| --- | --- | --- |
+| `getProductDetails({ productIdentifier })` | iOS, Android | Returns localized `price`, `displayName`, and `description`. |
+| `purchaseProduct({ productIdentifier, accountId?, acknowledgePurchases? })` | iOS, Android | iOS resolves with `{ successful, message, ... }`; Android resolves with `{ responseCode, responseMessage }`. |
+| `getCurrentEntitlements({ sync? })` | iOS, Android | `sync` triggers `AppStore.sync()` on iOS; Android ignores the flag and returns currently owned Play subscriptions. |
+| `getLatestTransaction({ productIdentifier })` | iOS, Android | Returns the latest verified transaction. Android includes the raw `purchase` JSON and `purchaseToken` instead of an expiry date. |
+| `manageSubscriptions()` | iOS | Opens the Apple manage subscriptions page. |
+| `manageSubscriptions({ productIdentifier, packageName })` | Android | Opens the Google Play subscriptions screen for the given product (fire-and-forget). |
+| `setApiVerificationDetails({ apiEndpoint, jwt, productId })` | Android | Configures the backend endpoint for Play Store expiry verification (required for expiry data). |
+| `addListener('ANDROID-PURCHASE-RESPONSE', listener)` | Android | Emits purchase success, failure, and pending payloads. |
+| `refundLatestTransaction({ productIdentifier })` | iOS (native only) | Not exported to JavaScript in v1.0.17. |
+| `echo({ value })` | iOS, Android | Development helper that echoes the provided string. |
 
-		const  oneMonthResponse: LatestTransactionResponse = await Subscriptions.getLatestTransaction({
-			productIdentifier:  productIDs[platform]["oneMonth"]
-		});
+## Usage Examples
 
-		const  twelveMonthResponse: LatestTransactionResponse = await  Subscriptions.getLatestTransaction({
-			productIdentifier:  productIDs[platform]["twelveMonth"]
-		});
+### Retrieve localized product details
 
-		const  oneMonthSuccessful = oneMonthResponse.responseCode == 0;
-		const  twelveMonthSuccessful = twelveMonthResponse.responseCode == 0;
+```ts
+import { Subscriptions } from '@socialmedialabs/capacitor-subscriptions';
 
-		// If user has had both a one month and twelve month subscription in the past
-		// we need to check the expiry date of both and return the most recent one.
-		if (oneMonthSuccessful && twelveMonthSuccessful) {
+export async function loadPricing(productIdentifier: string) {
+  const details = await Subscriptions.getProductDetails({ productIdentifier });
 
-			const  oneMonthTransactionExpiry = new  Date((oneMonthResponse.data  as  Transaction)?.expiryDate);
-			const  twelveMonthTransactionExpiry = new  Date((twelveMonthResponse.data  as  Transaction)?.expiryDate);
+  if (details.responseCode !== 0 || !details.data) {
+    throw new Error(details.responseMessage ?? 'Unknown billing error');
+  }
 
-
-			if (oneMonthTransactionExpiry > twelveMonthTransactionExpiry) { return  oneMonthResponse.data  as  Transaction }
-			else { return  twelveMonthResponse.data  as  Transaction }
-
-		} else  if (oneMonthSuccessful && !twelveMonthSuccessful) {
-			return  oneMonthResponse.data  as  Transaction
-		} else  if (!oneMonthSuccessful && twelveMonthSuccessful) {
-			return  twelveMonthResponse.data  as  Transaction
-		} else {
-			return  undefined;
-		}
-
-	} catch (error: any) {
-
-		console.log("Error when attempting to retrieve transaction info", error);
-		return undefined;
-
-	}
-},
-```
-
-## Retrieving product details e.g. price
-
-Passing in the subscription's product identifier to getProductDetails(...) will return a product object containing relevant information about the product.
-
-```javascript
-productIDs = {
-	"ios": {
-		"oneMonth": "com.your.subscriptionid.monthly",
-		"twelveMonth": "com.your.subscriptionid.yearly",
-	},
-	"android": {
-		"oneMonth":  "com.your.subscriptionid.android.1.month",
-		"twelveMonth":  "com.your.subscriptionid.android.12.months"
-	}
-}
-
-const [oneMonthPrice, setOneMonthPrice] = useState("Loading...");
-const [twelveMonthPrice, settwelveMonthPrice] = useState("Loading...");
-
-async retrieveProductDetails() {
-
-	const platform = (await Device.getInfo()).platform;
-
-	let oneMonthProduct: ProductDetailsResponse = await  Subscriptions.getProductDetails({
-		productIdentifier:  productIDs[platform]["oneMonth"];
-	});
-
-	let  twelveMonthProduct: ProductDetailsResponse = await  Subscriptions.getProductDetails({
-		productIdentifier:  productIDs[platform]["twelveMonth"];
-	});
-
-	setOneMonthPrice(
-		oneMonthProduct.responseCode === 0 ? (oneMonthProduct.data  as  Product).price : 'Failed'
-	);
-
-	setTwelveMonthPrice(
-		oneTwelveProduct.responseCode === 0 ? (oneTwelveProduct.data  as Product).price : 'Failed'
-	);
-
-}
-```
-## Payment initiation and flow (iOS)
-Initiating the payment flow (bringing up the native payment popover) is simple on iOS, it just requires awaiting a call to the purchaseProduct(...) method - passing in the necessary product identifier.
-
-```javascript
-productIDs = {
-	"ios": {
-		"oneMonth": "com.your.subscriptionid.monthly",
-		"twelveMonth": "com.your.subscriptionid.yearly",
-	},
-	"android": {
-		"oneMonth":  "com.your.subscriptionid.android.1.month",
-		"twelveMonth":  "com.your.subscriptionid.android.12.months"
-	}
-}
-
-async  purchaseProduct(productType: "oneMonth" | "twelveMonth") {
-
-	const  platform = (await  Device.getInfo()).platform;
-	const  response = await  Subscriptions.purchaseProduct({
-		productIdentifier:  productIDs[platform][productType];
-	})
-
+  return {
+    displayName: details.data.displayName,
+    price: details.data.price,
+  };
 }
 ```
 
-In your HTML code, inside a function which is triggered upon clicking a purchase button. You can simply just await a call to the method above, blocking the function until the process has finished (i.e. user finishing paying, or cancelled/closed the popover). The function will then resume, so a call to a validation function can be made to update the app depending on the result of the purchaseProduct(...) call.
+### Determine the most recent transaction expiry
 
-```javascript
-<div
-	className="subscription-btn"
-	onClick={async () => {
+```ts
+import { Subscriptions } from '@socialmedialabs/capacitor-subscriptions';
 
-		setIsInPurchaseProcess(true);
-		await  purchaseProduct("twelveMonth"); // <-- waits until native popover is closed
-		await  validateUserAccess(); // <-- Useful to have a easy accessible method which validates user access (either by checking current entitlements or most recent transaction).
+export async function getSubscriptionExpiry(productIdentifier: string) {
+  const latest = await Subscriptions.getLatestTransaction({ productIdentifier });
 
-		if(isPlatform('ios')) {
-			setIsInPurchaseProcess(false);
-		}
-	}}
->
-	<div  className="subscription-btn-txt">
-		12 month / {twelveMonthPrice}
-	</div>
-</div>
+  if (latest.responseCode === 0 && latest.data?.expiryDate) {
+    return new Date(latest.data.expiryDate);
+  }
+
+  // On Android combine latest.data.purchaseToken with your backend to resolve the expiry.
+  return undefined;
+}
 ```
 
-## Payment initiation and flow (Android)
-The payment process on Android is a bit more complex than Apple due to two reasons:
+### Trigger a purchase and refresh entitlements
 
-1. The purchaseProduct(...) method does NOT block code, therefore it requires different functionality to receive the result of the native popover process.
+```ts
+import { Capacitor } from '@capacitor/core';
+import { Subscriptions } from '@socialmedialabs/capacitor-subscriptions';
 
-2. Although Apple automatically verifies purchases upon the release of StoreKit, Google Billing does NOT. This means server-side technology is still required in order to validate purchases (without making this server-side call to Google, it would be impossible to know the expiry date of a subscription transaction - essentially making it a necessity to perform this step).
+export async function purchaseSubscription(productIdentifier: string) {
+  const result = await Subscriptions.purchaseProduct({ productIdentifier });
 
-The solution for this is to implement a listener which fires whenever the payment process is complete. It is recommended to initilise this listener early on in the app (near the top of your App.tsx file) to ensure that no purchases are missed. This listener should just be used to determine when you need to check for any new transactions to update your app with.
+  if (Capacitor.getPlatform() === 'ios') {
+    if (!result.successful) {
+      throw new Error(result.message);
+    }
+  } else {
+    if (result.responseCode !== 0) {
+      throw new Error(result.responseMessage ?? 'Billing error');
+    }
+  }
 
-```javascript
-useEffect(() => {
-	Subscriptions.addListener("ANDROID-PURCHASE-RESPONSE", (response: AndroidPurchasedTrigger) => {
-		validateUserAccess();
-	});
-}, [])
+  // Refresh entitlements regardless of platform
+  return Subscriptions.getCurrentEntitlements({ sync: Capacitor.getPlatform() === 'ios' });
+}
 ```
 
-### Google Play Billing v8 notes
+## Known Limitations
 
-- This plugin requires Google Play Billing Library v8 on Android.
-- Pending purchases must be explicitly enabled via `PendingPurchasesParams` during `BillingClient` setup. The plugin does this internally with:
-  - `PendingPurchasesParams.newBuilder().enableOneTimeProducts().build()`
-- The Billing client enables automatic service reconnection to improve reliability: `.enableAutoServiceReconnection()`.
-- The plugin emits a PENDING event state on Android:
-  - Event name: `ANDROID-PURCHASE-RESPONSE`
-  - Example payload when pending: `{ successful: false, pending: true, purchase: {...} }`
-- If you use the plugin locally via `file:../capacitor-subscriptions`, run after updates:
-  - `npm install` in your app
-  - `npx cap sync android`
-  - Rebuild the Android app
+- Android expiry dates depend on your backend calling the Google Play Developer API and returning an `expiryDate` ISO string. Without it the field remains `null`.
+- The TypeScript declarations now include `setApiVerificationDetails`, but `manageSubscriptions` still returns `any`; wrap it in a helper if you rely on platform-specific payloads.
+- `manageSubscriptions` on Android opens the Play Store intent without resolving the JavaScript promise. Treat the call as fire-and-forget.
+- `refundLatestTransaction` is not wired to the JavaScript bridge yet and therefore cannot be used from Capacitor code.
+- The web implementation only returns `UNIMPLEMENTED` placeholders.
+
+## Development
+
+```bash
+npm run build        # clean → docgen → tsc → rollup
+npm run verify       # runs iOS, Android, and web build checks
+npm pack             # inspect the published bundle
+```
+
+## License
+
+MIT © socialmedialabs.de

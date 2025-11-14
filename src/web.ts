@@ -72,8 +72,8 @@ export class SubscriptionsWeb extends WebPlugin implements SubscriptionsPlugin {
     console.log('manageSubscriptions');
   }
 
-  setGoogleVerificationDetails(options: { googleVerifyEndpoint: string, productId: string }): void {
-    console.log('setGoogleVerificationDetails', options);
+  async setApiVerificationDetails(options: { apiEndpoint: string; jwt: string; productId: string }): Promise<void> {
+    console.log('setApiVerificationDetails', options);
   }
 
   addListener(eventName: 'ANDROID-PURCHASE-RESPONSE', listenerFunc: (response: AndroidPurchasedTrigger) => void): Promise<PluginListenerHandle> {

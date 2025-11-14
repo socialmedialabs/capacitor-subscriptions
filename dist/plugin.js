@@ -60,8 +60,8 @@ var capacitorSubscriptions = (function (exports, core) {
         manageSubscriptions() {
             console.log('manageSubscriptions');
         }
-        setGoogleVerificationDetails(options) {
-            console.log('setGoogleVerificationDetails', options);
+        async setApiVerificationDetails(options) {
+            console.log('setApiVerificationDetails', options);
         }
         addListener(eventName, listenerFunc) {
             if (!this.listeners[eventName]) {

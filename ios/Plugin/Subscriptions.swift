@@ -67,16 +67,32 @@ import UIKit
   @available(iOS 15.0.0, *)
   @objc public func getProductDetails(_ productIdentifier: String) async -> PluginCallResultData {
 
+    print("[Subscriptions] getProductDetails called for: \(productIdentifier)")
+
     guard let product: Product = await getProduct(productIdentifier) as? Product else {
+      print("[Subscriptions] ERROR: Could not retrieve product '\(productIdentifier)'")
       return [
         "responseCode": 1,
-        "responseMessage": "Could not find a product matching the given productIdentifier",
+        "responseMessage": "Could not find a product matching the given productIdentifier: \(productIdentifier). Please verify the product ID in App Store Connect and ensure it is approved and active.",
       ]
     }
 
     let displayName = product.displayName
     let description = product.description
     let price = product.displayPrice
+    let productType = product.type
+
+    // Ensure product is a subscription type
+    if !(productType == .autoRenewable || productType == .nonRenewable) {
+      print("[Subscriptions] ERROR: Product '\(productIdentifier)' is not a subscription. Type: \(productType)")
+      return [
+        "responseCode": 1,
+        "responseMessage": "Product is not a subscription type. Found type: \(String(describing: productType))",
+      ]
+    }
+
+    print("[Subscriptions] Product retrieved successfully: \(productIdentifier)")
+    print("[Subscriptions] Product details - Name: \(displayName), Price: \(price), Type: \(productType)")
 
     return [
       "responseCode": 0,
@@ -86,6 +102,7 @@ import UIKit
         "displayName": displayName,
         "description": description,
         "price": price,
+        "type": String(describing: productType),
       ],
     ]
   }
@@ -100,6 +117,15 @@ import UIKit
         return [
           "successful": false,
           "message": "Could not find a product matching the given productIdentifier",
+        ]
+      }
+
+      // Ensure product is a subscription type
+      if !(product.type == .autoRenewable || product.type == .nonRenewable) {
+        print("[Subscriptions] ERROR: Attempt to purchase non-subscription product '\(productIdentifier)' of type \(product.type)")
+        return [
+          "successful": false,
+          "message": "Product is not a subscription type. Found type: \(String(describing: product.type))",
         ]
       }
 
@@ -279,6 +305,15 @@ import UIKit
 
       }
 
+      // Ensure product is a subscription type
+      if !(product.type == .autoRenewable || product.type == .nonRenewable) {
+        print("[Subscriptions] ERROR: Latest transaction requested for non-subscription product '\(productIdentifier)' of type \(product.type)")
+        return [
+          "responseCode": 1,
+          "responseMessage": "Product is not a subscription type. Found type: \(String(describing: product.type))",
+        ]
+      }
+
       let latestTransaction = await product.latestTransaction
       guard let transaction: Transaction = checkVerified(latestTransaction) as? Transaction else {
         // The user hasn't purchased this product.
@@ -350,6 +385,15 @@ import UIKit
 
       }
 
+      // Ensure product is a subscription type
+      if !(product.type == .autoRenewable || product.type == .nonRenewable) {
+        print("[Subscriptions] ERROR: Refund requested for non-subscription product '\(productIdentifier)' of type \(product.type)")
+        return [
+          "responseCode": 1,
+          "responseMessage": "Product is not a subscription type. Found type: \(String(describing: product.type))",
+        ]
+      }
+
       let latestTransaction = await product.latestTransaction
       guard let transaction: Transaction = checkVerified(latestTransaction) as? Transaction else {
         // The user hasn't purchased this product.
@@ -379,12 +423,42 @@ import UIKit
     ]
   }
 
-  @available(iOS 15.0.0, *)
-  @objc public func manageSubscriptions() async {
+  @objc public func manageSubscriptions() async throws {
+    if #available(iOS 15.0, *) {
+      // Use native StoreKit 2 API (works in Sandbox and Production)
+      print("[Subscriptions] Starting native Manage Subscriptions flow via StoreKit 2 API")
 
-    let manageTransactions: UIWindowScene
-    await UIApplication.shared.open(URL(string: "https://apps.apple.com/account/subscriptions")!)
+      // Get current UIWindowScene
+      guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+        print("[Subscriptions] ERROR: Could not obtain UIWindowScene")
+        throw NSError(
+          domain: "SubscriptionsError",
+          code: 1,
+          userInfo: [NSLocalizedDescriptionKey: "Could not obtain UIWindowScene. Ensure the app is running on a device or simulator with iOS 15.0 or later."]
+        )
+      }
 
+      do {
+        print("[Subscriptions] Presenting native Manage Subscriptions sheet")
+        try await AppStore.showManageSubscriptions(in: windowScene)
+        print("[Subscriptions] Manage Subscriptions sheet closed successfully")
+      } catch {
+        print("[Subscriptions] ERROR presenting Manage Subscriptions: \(error.localizedDescription)")
+        throw error
+      }
+    } else {
+      // Fallback for iOS versions < 15.0: open web URL
+      print("[Subscriptions] iOS < 15.0 detected, opening web URL fallback for Manage Subscriptions")
+      guard let url = URL(string: "https://apps.apple.com/account/subscriptions") else {
+        throw NSError(
+          domain: "SubscriptionsError",
+          code: 2,
+          userInfo: [NSLocalizedDescriptionKey: "Could not construct URL for managing subscriptions"]
+        )
+      }
+      await UIApplication.shared.open(url)
+      print("[Subscriptions] Opened Manage Subscriptions URL")
+    }
   }
 
   @available(iOS 15.0.0, *)
@@ -420,16 +494,30 @@ import UIKit
   @available(iOS 15.0.0, *)
   @objc private func getProduct(_ productIdentifier: String) async -> Any? {
 
-    do {
-      let products = try await Product.products(for: [productIdentifier])
-      if products.count > 0 {
-        let product = products[0]
-        return product
+    // Add basic retry logic to make product retrieval more resilient
+    let maxAttempts = 3
+    for attempt in 1...maxAttempts {
+      do {
+        print("[Subscriptions] getProduct attempt \(attempt)/\(maxAttempts) for: \(productIdentifier)")
+        let products = try await Product.products(for: [productIdentifier])
+        if let product = products.first {
+          print("[Subscriptions] Product found on attempt \(attempt): \(product.id)")
+          return product
+        } else {
+          print("[Subscriptions] No products returned for identifier: \(productIdentifier) on attempt \(attempt)")
+        }
+      } catch {
+        print("[Subscriptions] Error retrieving product '\(productIdentifier)' on attempt \(attempt): \(error.localizedDescription)")
       }
-      return nil
-    } catch {
-      return nil
+      // Fixed delay between attempts (0.5s)
+      if attempt < maxAttempts {
+        let nanos = UInt64(0.5 * 1_000_000_000)
+        try? await Task.sleep(nanoseconds: nanos)
+      }
     }
+
+    print("[Subscriptions] Failed to retrieve product after \(maxAttempts) attempts for: \(productIdentifier)")
+    return nil
 
   }
 

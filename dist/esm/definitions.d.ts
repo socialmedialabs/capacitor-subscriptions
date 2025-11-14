@@ -34,10 +34,11 @@ export interface SubscriptionsPlugin {
         productIdentifier: string;
     }): Promise<RefundLatestTransactionResponse>;
     manageSubscriptions(): any;
-    setGoogleVerificationDetails(options: {
-        googleVerifyEndpoint: string;
+    setApiVerificationDetails(options: {
+        apiEndpoint: string;
+        jwt: string;
         productId: string;
-    }): void;
+    }): Promise<void>;
     addListener(eventName: 'ANDROID-PURCHASE-RESPONSE', listenerFunc: (response: AndroidPurchasedTrigger) => void): Promise<PluginListenerHandle>;
 }
 export interface Product {

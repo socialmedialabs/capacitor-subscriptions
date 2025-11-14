@@ -18,7 +18,7 @@ ionic cap sync
 * [`getCurrentEntitlements()`](#getcurrententitlements)
 * [`getLatestTransaction(...)`](#getlatesttransaction)
 * [`manageSubscriptions(...)`](#managesubscriptions)
-* [`setGoogleVerificationDetails(...)`](#setgoogleverificationdetails)
+* [`setApiVerificationDetails(...)`](#setapiverificationdetails)
 * [`addListener('ANDROID-PURCHASE-RESPONSE', ...)`](#addlistenerandroid-purchase-response)
 * [Interfaces](#interfaces)
 * [Type Aliases](#type-aliases)
@@ -102,15 +102,17 @@ manageSubscriptions(options: { productIdentifier: string; }) => void
 --------------------
 
 
-### setGoogleVerificationDetails(...)
+### setApiVerificationDetails(...)
 
 ```typescript
-setGoogleVerificationDetails(options: { googleVerifyEndpoint: string; productId: string; }) => void
+setApiVerificationDetails(options: { apiEndpoint: string; jwt: string; productId: string; }) => Promise<void>
 ```
 
 | Param         | Type                                                        |
 | ------------- | ----------------------------------------------------------- |
-| **`options`** | <code>{ googleVerifyEndpoint: string; productId: string; }</code> |
+| **`options`** | <code>{ apiEndpoint: string; jwt: string; productId: string; }</code> |
+
+**Returns:** <code>Promise<void></code>
 
 --------------------
 
